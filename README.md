@@ -289,3 +289,75 @@ value - aaaaaaaaaabbbbbbbbbccccccc
 So we have 4 variables as of now,
 
 ![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/50c72334-26ab-402b-99bb-4fcaed751e36)
+
+### To add a Docker and Trivy scan stage
+
+To add a docker build/push and Trivy Image scanning stage into gitlab-ci yaml file.
+
+```
+stages:
+    - npm
+    - sonar
+    - trivy file scan
+    - docker
+    - trivy image scan
+Install dependecy:
+    stage: npm
+    image:
+        name: node:16
+    script:
+        - npm install
+sonarqube-check:
+  stage: sonar
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner
+  allow_failure: true
+  only:
+    - main
+Trivy file scan:
+  stage: trivy file scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy fs .
+Docker build and push:
+  stage: docker
+  image:
+    name: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t candycrush .
+    - docker tag candycrush latchudevops/candycrush:latest
+    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+    - docker push latchudevops/candycrush:latest
+Scan image:
+  stage: trivy image scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy image latchudevops/candycrush:latest
+```
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/c74b41c1-d484-478b-a598-e522153f144f)
+
+If i check with docker stage in pipeline
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/708001a4-7220-4031-a0d3-f9df75b6650a)
+
+If i check with dockerhub
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/f8f8ccf7-ec4b-4194-86d1-6753375f4904)
+
