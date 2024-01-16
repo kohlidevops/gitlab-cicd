@@ -130,3 +130,162 @@ sonar.qualitygate.wait=true
 commit the file to create a file.
 
 ![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/77828260-855e-464d-b65a-5c4fda761fa5)
+
+### To generate the Sonarqube token
+
+To generate the token in Sonaqube and add it to the Gitlab -> Your project repo -> Settings -> CICD -> Variables -> Expand -> Add variables
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/bea85f28-074a-4f59-9e17-7bfab7a778f2)
+
+```
+key - SONAR_TOKEN
+Value - aaaaaaabbbbbbbbbbccccccccccdddddddd
+```
+
+To add one more variable for Sonarqube URL
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/cab5910e-38c4-42fc-85f3-19c488249b5c)
+
+```
+key - SONAR_HOST_URL
+Value - http://13.201.134.147:9000
+```
+
+As of now, Two variables added.
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/f497b02d-7b14-4213-8c6b-79e2deb5b166)
+
+Navigate to Sonarqube console  and click on continue
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/936f4e25-18fe-4069-b4fa-b00be8be1f16)
+
+It will provide and CI configuration file copy it and use it inside our .gitlab-ci.yml file
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/c1164190-2179-466e-a790-d59a7addf59b)
+
+Commit changes and it will automatically start the build.
+
+Click on Build –> Pipelines
+
+Your .gitlab-ci.yml file would be like below
+
+```
+stages:
+    - npm
+    - sonar
+
+Install dependecy:
+    stage: npm    
+    image:
+        name: node:16
+    script:
+        - npm install    
+
+sonarqube-check:
+  stage: sonar
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script: 
+    - sonar-scanner
+  allow_failure: true
+  only:
+    - main
+```
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/0c1b78cf-c38b-4b6c-bf7b-678bb2a94768)
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/31f56ef7-5c92-446d-b8b9-c17486241761)
+
+my job has been succeeded.
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/4da759d4-c14f-4a02-81a1-e51cf09df25b)
+
+### Add Trivy file scan stage
+
+Now add the next stage of the Trivy file scan
+
+Update the .gitlab-ci.yml file
+
+```
+stages:
+    - npm
+    - sonar
+    - trivy file scan
+
+Install dependecy:
+    stage: npm    
+    image:
+        name: node:16
+    script:
+        - npm install    
+
+sonarqube-check:
+  stage: sonar
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script: 
+    - sonar-scanner
+  allow_failure: true
+  only:
+    - main
+
+Trivy file scan:
+  stage: trivy file scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy fs .
+```
+
+My job has been succeeded without fail.
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/50d91830-46a7-4575-8c1a-0613ddf70d99)
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/11afdcd7-fbad-4d71-bb82-1d293d70dc49)
+
+If i go and check with sonarqube for code analysis
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/aad1650a-b5b5-4f9d-8b11-3d2d14773e6f)
+
+### To add Docker stage
+
+Add the Docker build and push stage
+
+Before that Add docker credentials to GitLab Variables as secrets.
+
+Go to the docker hub and create a Personal Access token
+
+Navigate to Docker hub -> profile -> My profile -> Security -> New access token
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/34c91bf7-b1a4-4388-a63c-db7d8463b3de)
+
+Navigate to Gitlab -> project repo -> Settings -> CICD -> Variables -> Expand
+
+```
+key - DOCKER_USERNAME
+value - latchudevops
+
+key - DOCKER_PASSWORD
+value - aaaaaaaaaabbbbbbbbbccccccc
+```
+
+So we have 4 variables as of now,
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/50c72334-26ab-402b-99bb-4fcaed751e36)
