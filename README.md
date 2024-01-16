@@ -1,4 +1,6 @@
-# gitlab-cicd
+# To deploy a candycrush container application on EC2 instance using GitLab CICD runner
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/87b5d83b-922f-4512-b3d4-34ad743f1a72)
 
 ## Create a Gitlab repo
 
