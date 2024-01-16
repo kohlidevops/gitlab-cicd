@@ -361,3 +361,171 @@ If i check with dockerhub
 
 ![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/f8f8ccf7-ec4b-4194-86d1-6753375f4904)
 
+## Install Gitlab Runner on EC2
+
+Go to Gitlab -> your project repo -> Settings -> CICD -> Runner -> Expand
+
+Click on Three dots and then click on Show Runner installation
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/7180097c-983d-49a7-812d-ff3441486fa0)
+
+Download and install library
+
+```
+# Download the binary for your system
+sudo curl -L --output /usr/local/bin/gitlab-runner https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64
+
+# Give it permission to execute
+sudo chmod +x /usr/local/bin/gitlab-runner
+
+# Create a GitLab Runner user
+sudo useradd --comment 'GitLab Runner' --create-home gitlab-runner --shell /bin/bash
+
+# Install and run as a service
+sudo gitlab-runner install --user=gitlab-runner --working-directory=/home/gitlab-runner
+sudo gitlab-runner start
+
+# Command to register runner
+sudo gitlab-runner register --url https://gitlab.com/ --registration-token aaaaaaaaaaabbbbbbbbbccccc
+```
+
+##### To provide the detils for registering instance
+
+1. Provide Enter for GitLab.com
+2. For token we already added with token, so click on Enter again
+3. Description as your wish
+4. Tags also and you can use multiple tags by providing a comma after each tags
+5. Maintenance note is just optional
+6. For executors use Shell
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/d5f4b4d9-925d-4c56-9f5e-3b0f3aa2fbb5)
+
+Runner added successfully.
+
+Start the GitLab runner
+
+```
+sudo gitlab-runner start
+```
+
+Run the GitLab runner
+
+```
+sudo gitlab-runner run
+```
+
+Go to GitLab and refresh the page once or click on Enable for this project
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/00dea40c-b34b-48ed-9690-0f4aa954e64b)
+
+Click on the Pencil mark to edit and Click on the Check box to indicate whether this runner can pick jobs without tags.
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/40d23715-1f7e-42ca-9a96-220e107d3a21)
+
+### To add the deploy stage
+
+To navigate to Gitlab -> your repo -> edit -> .gitlab-ci yaml file
+
+your gitlab-ci yaml file would be like below (Complete file)
+
+```
+stages:
+    - npm
+    - sonar
+    - trivy file scan
+    - docker
+    - trivy image scan
+    - run container
+Install dependecy:
+    stage: npm
+    image:
+        name: node:16
+    script:
+        - npm install
+sonarqube-check:
+  stage: sonar
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner
+  allow_failure: true
+  only:
+    - main
+Trivy file scan:
+  stage: trivy file scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy fs .
+Docker build and push:
+  stage: docker
+  image:
+    name: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t candycrush .
+    - docker tag candycrush latchudevops/candycrush:latest
+    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+    - docker push latchudevops/candycrush:latest
+Scan image:
+  stage: trivy image scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy image latchudevops/candycrush:latest
+deploy:
+  stage: run container
+  tags:
+    - candycrush        #use your own tags 
+  script:
+    - docker run -d --name candycrush -p 3000:3000 latchudevops/candycrush:latest
+```
+
+commit the changes and see the build status
+
+##### Comment out below lines
+
+To comment the below lines in Gitlab runner EC2 machine - SSH to machine 
+
+```
+sudo -i
+cd /home/gitlab-runner
+sudo nano .bash_logout
+
+# ~/.bash_logout: executed by bash(1) when login shell exits.
+# when leaving the console clear the screen to increase privacy
+
+# if [ "$SHLVL" = 1 ]; then
+#    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q
+# fi
+```
+
+Awesome! My jobs has been succeeded with all stages I defined
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/ecba103e-1b55-4f68-897c-1e30eedc602a)
+
+If i check with Gitlab runner machine - candycrush container is up and running
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/a34cde8d-f54a-44b9-b826-459d62fcef63)
+
+Now I can able to access candycrush app with ec2-publicip:3000 port
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/3ee248b9-6bec-46c8-bd57-32443d2481bc)
+
+So my app has been deployed successfully.
+
+![image](https://github.com/kohlidevops/gitlab-cicd/assets/100069489/88a52724-423c-41a8-823e-48fb44f23362)
+
+That's it!
+
